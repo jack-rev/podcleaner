@@ -8,6 +8,7 @@ import (
     "context"
     "k8s.io/client-go/tools/clientcmd"
     "k8s.io/client-go/kubernetes"
+    corev1 "k8s.io/api/core/v1"
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,7 +38,13 @@ func main() {
         panic(err.Error())
     }
 
-    fmt.Println(pods.Items[0].ObjectMeta.Name)
-
+    for i := range pods.Items {
+        podPhase := pods.Items[i].Status.Phase
+        fmt.Println(pods.Items[i].ObjectMeta.Name)
+        if podPhase == corev1.PodSucceeded {
+            fmt.Printf("Deleting pod %s which finished with status %s\n", pods.Items[i].ObjectMeta.Name, podPhase)
+            clientset.CoreV1().Pods("default").Delete(context.TODO(), pods.Items[i].ObjectMeta.Name, metav1.DeleteOptions{})
+        }
+    }
 
 }
