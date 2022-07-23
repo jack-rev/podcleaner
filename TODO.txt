@@ -1,2 +1,3 @@
 - Sort out RBAC
-- Dynamic kubeconfig loading depending on if in-cluster or not
+    https://pkg.go.dev/k8s.io/client-go@v0.24.3/kubernetes/typed/rbac/v1alpha1#RbacV1alpha1Client
+    https://pkg.go.dev/k8s.io/client-go@v0.24.3/kubernetes/typed/rbac/v1alpha1#ClusterRoleBindingInterface

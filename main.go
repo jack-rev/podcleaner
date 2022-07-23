@@ -2,12 +2,10 @@ package main
 
 import (
     "fmt"
-    // "path/filepath"
-    "flag"
-    // "os"
+    "os"
     "context"
     "k8s.io/client-go/rest"
-    // "k8s.io/client-go/tools/clientcmd"
+    "k8s.io/client-go/tools/clientcmd"
     "k8s.io/client-go/kubernetes"
 
     metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,39 +22,37 @@ func evictNginx(client *kubernetes.Clientset) error {
     })
 }
 
+func buildFromKubeConfig() *rest.Config {
+    home := os.Getenv("HOME")
+    config, err := clientcmd.BuildConfigFromFlags("", fmt.Sprintf("%s/.kube/config", home)); if err != nil {
+        fmt.Println(err)
+    }
+    return config
+}
+
 func main() {
     fmt.Println("podcleaner running")
 
-    // var kubeconfig *string
-
-    //TODO ensure kubeconfig can be retrieved in container
-
-    // if home := os.Getenv("HOME"); home != "" {
-    //     kubeconfig = flag.String("kubeconfig", filepath.Join(home, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-    // } else {
-    //     kubeconfig = flag.String("kubeconfig", "", "absolute path to the kubeconfig file")
-    // }
-    flag.Parse()
-
+    // Fetch kube config
     config, err := rest.InClusterConfig(); if err != nil {
-        fmt.Println(err)
+        if err.Error() == "unable to load in-cluster configuration, KUBERNETES_SERVICE_HOST and KUBERNETES_SERVICE_PORT must be defined" {
+            config = buildFromKubeConfig()
+        } else {
+            fmt.Println(err)
+        }
     }
 
-    // config, err := clientcmd.BuildConfigFromFlags("", *kubeconfig)
-    // if err != nil {
-    //     panic(err)
-    // }
-
+    // Create client
     clientset, err := kubernetes.NewForConfig(config)
 
+    // List pods
     pods, err := clientset.CoreV1().Pods("default").List(context.TODO(), metav1.ListOptions{})
     if err != nil {
         panic(err.Error())
     }
-
+    // Iterate through pods
     for i := range pods.Items {
         podReason := pods.Items[i].Status.Reason
-
         if podReason == "Evicted" {
             fmt.Printf("Deleting pod %s which finished with status: %s\n", pods.Items[i].ObjectMeta.Name, podReason)
             err = clientset.CoreV1().Pods("default").Delete(context.TODO(), pods.Items[i].ObjectMeta.Name, metav1.DeleteOptions{}); if err != nil {
@@ -64,5 +60,4 @@ func main() {
             }
         }
     }
-
 }
